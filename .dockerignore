@@ -2,6 +2,10 @@ node_modules
 vendor
 .git
 .env
-storage/framework/views/*
 storage/framework/cache/data/*
+storage/framework/views/*
 storage/logs/*
+Dockerfile
+.dockerignore
+.gitignore
+README.md
