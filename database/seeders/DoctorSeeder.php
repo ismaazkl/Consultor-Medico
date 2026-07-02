@@ -9,10 +9,17 @@ class DoctorSeeder extends Seeder
 {
     public function run(): void
     {
+        if (Doctor::where('username', 'doctor')->exists()) {
+            $this->command->info('Doctor already exists, skipping.');
+            return;
+        }
+
         Doctor::create([
-            'username' => 'Gary Vergara',          // ← cambia esto
-            'password' => Hash::make('123456'), // ← cambia esto
+            'username' => 'doctor',
+            'password' => Hash::make('123456'),
             'name'     => 'Dr. Gary Vergara',
         ]);
+
+        $this->command->info('Doctor created: doctor / 123456');
     }
 }
