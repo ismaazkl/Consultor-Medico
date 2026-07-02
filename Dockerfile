@@ -30,8 +30,6 @@ RUN npm run build
 
 RUN chown -R www-data:www-data storage bootstrap/cache public/build
 
-COPY .env.example .env
-
 EXPOSE 80
 
 COPY docker-entrypoint.sh /usr/local/bin/
