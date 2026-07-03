@@ -17,10 +17,17 @@ Route::get('/debug', function () {
         'images/favicon.png' => file_exists(public_path('images/favicon.png')),
         'build/manifest.json'=> file_exists(public_path('build/manifest.json')),
     ];
+    $readable = [
+        'css/app.css'        => is_readable(public_path('css/app.css')),
+        'css_perm'           => substr(sprintf('%o', fileperms(public_path('css/app.css'))), -4),
+        'pub_perm'           => substr(sprintf('%o', fileperms(public_path())), -4),
+    ];
     return response()->json([
+        'doc_root'    => $_SERVER['DOCUMENT_ROOT'] ?? 'N/A',
         'public_path' => public_path(),
         'base_path'   => base_path(),
         'files'       => $files,
+        'readable'    => $readable,
     ]);
 });
 Route::post('/appointments', [AppointmentController::class, 'store'])
