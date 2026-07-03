@@ -1,6 +1,4 @@
-FROM php:8.3-apache
-
-RUN a2enmod rewrite
+FROM php:8.3-cli
 
 RUN apt-get update && apt-get install -y \
     libpq-dev \
@@ -27,12 +25,9 @@ RUN npm run build
 
 RUN chown -R www-data:www-data storage bootstrap/cache public/build
 
-EXPOSE 80
+EXPOSE 8000
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-COPY apache.conf /etc/apache2/sites-available/000-default.conf
-
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["apache2-foreground"]
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
