@@ -11,10 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
     $middleware->alias([
         'doctor.auth' => \App\Http\Middleware\DoctorAuth::class,
     ]);
-        //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
