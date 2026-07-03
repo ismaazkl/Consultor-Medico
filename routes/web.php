@@ -9,6 +9,20 @@ use App\Http\Controllers\AppointmentController;
 
 // ── PÚBLICA ──────────────────────────────────────
 Route::get('/', fn() => view('welcome'))->name('home');
+Route::get('/debug', function () {
+    $files = [
+        'css/app.css'        => file_exists(public_path('css/app.css')),
+        'js/app.js'          => file_exists(public_path('js/app.js')),
+        'images/logo.png'    => file_exists(public_path('images/logo.png')),
+        'images/favicon.png' => file_exists(public_path('images/favicon.png')),
+        'build/manifest.json'=> file_exists(public_path('build/manifest.json')),
+    ];
+    return response()->json([
+        'public_path' => public_path(),
+        'base_path'   => base_path(),
+        'files'       => $files,
+    ]);
+});
 Route::post('/appointments', [AppointmentController::class, 'store'])
      ->name('appointments.store');
 
