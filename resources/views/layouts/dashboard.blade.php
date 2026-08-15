@@ -67,6 +67,7 @@
                 Nuevo Paciente
             </a>
 
+
             <p class="sidebar-section">Sistema</p>
             <a href="{{ route('home') }}" class="sidebar-link" target="_blank">
                 <svg class="sl-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

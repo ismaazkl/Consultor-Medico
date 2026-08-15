@@ -52,6 +52,7 @@
                 </div>
             </div>
             <div style="padding:0 1.5rem 1.5rem;display:flex;gap:0.5rem">
+                <a href="{{ route('patients.printHistory', $patient->id) }}" target="_blank" class="btn-sm" style="flex:1;text-align:center;color:var(--teal);border-color:rgba(26,158,140,0.3)">🖨 Imprimir</a>
                 <a href="{{ route('patients.edit', $patient->id) }}" class="btn-sm teal" style="flex:1;text-align:center">Editar</a>
                 <form action="{{ route('patients.destroy', $patient->id) }}" method="POST" style="flex:1"
                       onsubmit="return confirm('¿Eliminar a {{ $patient->full_name }}?')">
@@ -109,9 +110,14 @@
         <div class="dash-section">
             <div class="dash-section-header">
                 <h2>Historial Médico</h2>
-                <button onclick="document.getElementById('addConsultModal').style.display='flex'" class="btn-sm teal">
-                    + Agregar consulta
-                </button>
+                <div style="display:flex;gap:0.5rem">
+                    <button onclick="document.getElementById('addPrescriptionModal').style.display='flex'" class="btn-sm" style="color:var(--gold);border-color:rgba(245,166,35,0.3)">
+                        + Receta
+                    </button>
+                    <button onclick="document.getElementById('addConsultModal').style.display='flex'" class="btn-sm teal">
+                        + Consulta
+                    </button>
+                </div>
             </div>
 
             <div class="history-timeline">
@@ -140,6 +146,26 @@
                             📅 Próxima cita: {{ \Carbon\Carbon::parse($consult->next_visit)->format('d/m/Y') }}
                         </p>
                         @endif
+                        @if($consult->prescriptions->count() > 0)
+                        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--gray-2)">
+                            <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gold);margin-bottom:0.5rem">💊 Recetas</p>
+                            @foreach($consult->prescriptions as $rx)
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:rgba(245,166,35,0.06);border-radius:8px;margin-bottom:0.4rem;border:1px solid rgba(245,166,35,0.15)">
+                                <div>
+                                    <p style="font-size:0.85rem;font-weight:600;color:var(--deep)">{{ $rx->medication_name }}</p>
+                                    <p style="font-size:0.75rem;color:var(--text-lt)">{{ $rx->dosage }} · {{ $rx->frequency }}</p>
+                                </div>
+                                <div style="display:flex;gap:0.3rem">
+                                    <a href="{{ route('prescriptions.print', $rx->id) }}" target="_blank" class="btn-sm" style="color:var(--teal);border-color:rgba(26,158,140,0.3)" title="Imprimir receta">🖨</a>
+                                    <form action="{{ route('prescriptions.destroy', $rx->id) }}" method="POST" onsubmit="return confirm('¿Eliminar esta receta?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" style="background:none;border:none;cursor:pointer;color:var(--gray-3);font-size:0.8rem" title="Eliminar">✕</button>
+                                    </form>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                     <form action="{{ route('consultations.destroy', $consult->id) }}" method="POST"
                           onsubmit="return confirm('¿Eliminar esta consulta?')">
@@ -159,6 +185,59 @@
                 @endforelse
             </div>
         </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: AGREGAR RECETA ===== -->
+<div id="addPrescriptionModal" style="display:none;position:fixed;inset:0;background:rgba(13,45,58,0.5);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+    <div style="background:white;border-radius:20px;padding:2rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+            <h2 style="font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--deep)">💊 Agregar Receta</h2>
+            <button onclick="document.getElementById('addPrescriptionModal').style.display='none'"
+                    style="background:none;border:none;cursor:pointer;color:var(--gray-4);font-size:1.3rem;line-height:1">✕</button>
+        </div>
+        <form action="{{ route('prescriptions.store', $patient->id) }}" method="POST" style="display:flex;flex-direction:column;gap:1rem">
+            @csrf
+            <div class="form-group">
+                <label>Consulta asociada *</label>
+                <select name="consultation_id" required>
+                    <option value="">— Seleccione consulta —</option>
+                    @foreach($patient->consultations->sortByDesc('visit_date') as $consult)
+                    <option value="{{ $consult->id }}">
+                        {{ \Carbon\Carbon::parse($consult->visit_date)->format('d/m/Y') }} - {{ $consult->title }}
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nombre del medicamento *</label>
+                <input type="text" name="medication_name" required placeholder="Ej: Amoxicilina 500mg">
+            </div>
+            <div class="patient-form-grid">
+                <div class="form-group">
+                    <label>Dosis *</label>
+                    <input type="text" name="dosage" required placeholder="Ej: 1 cápsula">
+                </div>
+                <div class="form-group">
+                    <label>Frecuencia *</label>
+                    <input type="text" name="frequency" required placeholder="Ej: Cada 8 horas">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Duración</label>
+                <input type="text" name="duration" placeholder="Ej: 7 días">
+            </div>
+            <div class="form-group">
+                <label>Instrucciones adicionales</label>
+                <textarea name="instructions" rows="2" placeholder="Ej: Tomar con alimentos, evitar alcohol..."></textarea>
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+                <button type="button" onclick="document.getElementById('addPrescriptionModal').style.display='none'" class="btn-secondary" style="flex:1">Cancelar</button>
+                <button type="submit" class="btn-primary" style="flex:1">
+                    💾 Guardar Receta
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

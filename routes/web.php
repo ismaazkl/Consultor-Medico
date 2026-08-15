@@ -6,30 +6,12 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\PrescriptionController;
+use App\Http\Controllers\ExportController;
 
 // ── PÚBLICA ──────────────────────────────────────
 Route::get('/', fn() => view('welcome'))->name('home');
-Route::get('/debug', function () {
-    $files = [
-        'css/app.css'        => file_exists(public_path('css/app.css')),
-        'js/app.js'          => file_exists(public_path('js/app.js')),
-        'images/logo.png'    => file_exists(public_path('images/logo.png')),
-        'images/favicon.png' => file_exists(public_path('images/favicon.png')),
-        'build/manifest.json'=> file_exists(public_path('build/manifest.json')),
-    ];
-    $readable = [
-        'css/app.css'        => is_readable(public_path('css/app.css')),
-        'css_perm'           => substr(sprintf('%o', fileperms(public_path('css/app.css'))), -4),
-        'pub_perm'           => substr(sprintf('%o', fileperms(public_path())), -4),
-    ];
-    return response()->json([
-        'doc_root'    => $_SERVER['DOCUMENT_ROOT'] ?? 'N/A',
-        'public_path' => public_path(),
-        'base_path'   => base_path(),
-        'files'       => $files,
-        'readable'    => $readable,
-    ]);
-});
+
 Route::post('/appointments', [AppointmentController::class, 'store'])
      ->name('appointments.store');
 
@@ -42,14 +24,13 @@ Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 Route::middleware('doctor.auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-
     // Pacientes
     Route::resource('patients', PatientController::class);
 
-    // Historial 
+    // Historial
     Route::get('/dashboard/appointments', [AppointmentController::class, 'index'])
          ->name('appointments.index');
-     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])
+    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])
          ->name('appointments.updateStatus');
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])
          ->name('appointments.destroy');
@@ -57,6 +38,18 @@ Route::middleware('doctor.auth')->group(function () {
          ->name('consultations.store');
     Route::delete('/consultations/{consultation}', [ConsultationController::class, 'destroy'])
          ->name('consultations.destroy');
+
+    // Recetas médicas
+    Route::post('/patients/{patient}/prescriptions', [PrescriptionController::class, 'store'])
+         ->name('prescriptions.store');
+    Route::delete('/prescriptions/{prescription}', [PrescriptionController::class, 'destroy'])
+         ->name('prescriptions.destroy');
+    Route::get('/prescriptions/{prescription}/print', [PrescriptionController::class, 'print'])
+         ->name('prescriptions.print');
+
+    // Exportar historial
+    Route::get('/patients/{patient}/print', [ExportController::class, 'printHistory'])
+         ->name('patients.printHistory');
 
     // Calendario
     Route::get('/dashboard/calendar', [CalendarController::class, 'index'])
