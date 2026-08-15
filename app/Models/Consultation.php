@@ -7,7 +7,8 @@ class Consultation extends Model
 {
     protected $fillable = [
         'patient_id','doctor_id','visit_date','visit_time',
-        'title','diagnosis','treatment','notes','next_visit'
+        'title','diagnosis','treatment','notes','next_visit',
+        'weight','height','bp_systolic','bp_diastolic','temperature','heart_rate'
     ];
 
     protected $casts = [

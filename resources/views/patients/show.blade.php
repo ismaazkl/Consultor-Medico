@@ -141,6 +141,26 @@
                         @if($consult->notes)
                         <p class="history-desc" style="margin-top:0.3rem">{{ $consult->notes }}</p>
                         @endif
+                        @if($consult->weight || $consult->bp_systolic || $consult->temperature || $consult->heart_rate)
+                        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem">
+                            @if($consult->weight && $consult->height)
+                                @php $imcVal = round($consult->weight / (($consult->height/100) * ($consult->height/100)), 1); @endphp
+                                <span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;background:var(--teal-light);border-radius:6px;font-size:0.72rem;font-weight:600;color:var(--teal)">⚖ {{ $consult->weight }}kg · IMC {{ $imcVal }}</span>
+                            @endif
+                            @if($consult->bp_systolic)
+                                @php
+                                    $bpC = ($consult->bp_systolic >= 140 || $consult->bp_diastolic >= 90) ? 'var(--rose)' : (($consult->bp_systolic >= 120 || $consult->bp_diastolic >= 80) ? 'var(--gold)' : 'var(--sage)');
+                                @endphp
+                                <span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;background:{{ $bpC }}15;border-radius:6px;font-size:0.72rem;font-weight:600;color:{{ $bpC }}">🫀 {{ $consult->bp_systolic }}/{{ $consult->bp_diastolic }}</span>
+                            @endif
+                            @if($consult->temperature)
+                                <span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;background:var(--gold-light);border-radius:6px;font-size:0.72rem;font-weight:600;color:var(--gold)">🌡 {{ $consult->temperature }}°C</span>
+                            @endif
+                            @if($consult->heart_rate)
+                                <span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;background:var(--sage-light);border-radius:6px;font-size:0.72rem;font-weight:600;color:var(--sage)">💓 {{ $consult->heart_rate }} lpm</span>
+                            @endif
+                        </div>
+                        @endif
                         @if($consult->next_visit)
                         <p style="font-size:0.75rem;color:var(--gold);margin-top:0.4rem;font-weight:600">
                             📅 Próxima cita: {{ \Carbon\Carbon::parse($consult->next_visit)->format('d/m/Y') }}
@@ -186,6 +206,266 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- ===== SIGNOS VITALES: GRÁFICAS ===== -->
+<div class="dash-section" style="margin-top:1.5rem">
+    <div class="dash-section-header">
+        <h2>📊 Signos Vitales</h2>
+    </div>
+    @php
+        $vitals = $patient->consultations()
+            ->whereNotNull('weight')
+            ->orWhereNotNull('bp_systolic')
+            ->orWhereNotNull('temperature')
+            ->orWhereNotNull('heart_rate')
+            ->orderBy('visit_date')
+            ->get();
+        $hasVitals = $vitals->isNotEmpty();
+    @endphp
+    @if($hasVitals)
+    <div style="padding:1.5rem">
+        {{-- Último IMC --}}
+        @php
+            $lastWithWeight = $patient->consultations()->whereNotNull('weight')->whereNotNull('height')->latest('visit_date')->first();
+            $imc = null;
+            $imcClass = '';
+            if($lastWithWeight && $lastWithWeight->height > 0) {
+                $imc = round($lastWithWeight->weight / (($lastWithWeight->height/100) * ($lastWithWeight->height/100)), 1);
+                if($imc < 18.5) { $imcClass = 'Bajo peso'; }
+                elseif($imc < 25) { $imcClass = 'Normal'; }
+                elseif($imc < 30) { $imcClass = 'Sobrepeso'; }
+                else { $imcClass = 'Obesidad'; }
+            }
+        @endphp
+
+        {{-- Resumen rápido --}}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.75rem;margin-bottom:1.5rem">
+            @if($lastWithWeight)
+            <div style="padding:0.85rem;background:var(--gray-1);border-radius:10px;text-align:center">
+                <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-lt);letter-spacing:0.05em">IMC</p>
+                <p style="font-size:1.5rem;font-weight:700;color:var(--deep);font-family:var(--font-display)">{{ $imc }}</p>
+                <p style="font-size:0.75rem;font-weight:600;color:{{ $imcClass === 'Normal' ? 'var(--sage)' : ($imcClass === 'Bajo peso' ? 'var(--gold)' : 'var(--rose)') }}">{{ $imcClass }}</p>
+            </div>
+            @endif
+            @php
+                $lastBP = $patient->consultations()->whereNotNull('bp_systolic')->latest('visit_date')->first();
+            @endphp
+            @if($lastBP)
+            <div style="padding:0.85rem;background:var(--gray-1);border-radius:10px;text-align:center">
+                <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-lt);letter-spacing:0.05em">Presión</p>
+                <p style="font-size:1.5rem;font-weight:700;color:var(--deep);font-family:var(--font-display)">{{ $lastBP->bp_systolic }}/{{ $lastBP->bp_diastolic }}</p>
+                @php
+                    $bpClass = 'Normal';
+                    $bpColor = 'var(--sage)';
+                    if($lastBP->bp_systolic >= 140 || $lastBP->bp_diastolic >= 90) { $bpClass = 'Hipertensión'; $bpColor = 'var(--rose)'; }
+                    elseif($lastBP->bp_systolic >= 120 || $lastBP->bp_diastolic >= 80) { $bpClass = 'Prehipertensión'; $bpColor = 'var(--gold)'; }
+                @endphp
+                <p style="font-size:0.75rem;font-weight:600;color:{{ $bpColor }}">{{ $bpClass }}</p>
+            </div>
+            @endif
+            @php
+                $lastTemp = $patient->consultations()->whereNotNull('temperature')->latest('visit_date')->first();
+            @endphp
+            @if($lastTemp)
+            <div style="padding:0.85rem;background:var(--gray-1);border-radius:10px;text-align:center">
+                <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-lt);letter-spacing:0.05em">Temperatura</p>
+                <p style="font-size:1.5rem;font-weight:700;color:var(--deep);font-family:var(--font-display)">{{ $lastTemp->temperature }}°</p>
+                @php
+                    $tempClass = $lastTemp->temperature >= 38 ? 'Fiebre' : ($lastTemp->temperature < 35 ? 'Hipotermia' : 'Normal');
+                    $tempColor = $lastTemp->temperature >= 38 ? 'var(--rose)' : ($lastTemp->temperature < 35 ? 'var(--gold)' : 'var(--sage)');
+                @endphp
+                <p style="font-size:0.75rem;font-weight:600;color:{{ $tempColor }}">{{ $tempClass }}</p>
+            </div>
+            @endif
+            @php
+                $lastHR = $patient->consultations()->whereNotNull('heart_rate')->latest('visit_date')->first();
+            @endphp
+            @if($lastHR)
+            <div style="padding:0.85rem;background:var(--gray-1);border-radius:10px;text-align:center">
+                <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-lt);letter-spacing:0.05em">Frec. Cardíaca</p>
+                <p style="font-size:1.5rem;font-weight:700;color:var(--deep);font-family:var(--font-display)">{{ $lastHR->heart_rate }} <span style="font-size:0.8rem;font-weight:500">lpm</span></p>
+                @php
+                    $hrClass = $lastHR->heart_rate < 60 ? 'Bradicardia' : ($lastHR->heart_rate > 100 ? 'Taquicardia' : 'Normal');
+                    $hrColor = $lastHR->heart_rate < 60 ? 'var(--gold)' : ($lastHR->heart_rate > 100 ? 'var(--rose)' : 'var(--sage)');
+                @endphp
+                <p style="font-size:0.75rem;font-weight:600;color:{{ $hrColor }}">{{ $hrClass }}</p>
+            </div>
+            @endif
+        </div>
+
+        {{-- Gráficas --}}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+            {{-- IMC --}}
+            @if($patient->consultations()->whereNotNull('weight')->whereNotNull('height')->count() > 0)
+            <div style="background:var(--gray-1);border-radius:12px;padding:1.25rem">
+                <p style="font-size:0.82rem;font-weight:700;color:var(--deep);margin-bottom:0.75rem">IMC (Peso/Estatura²)</p>
+                <canvas id="chartIMC" height="140"></canvas>
+            </div>
+            @endif
+            {{-- Presión Arterial --}}
+            @if($patient->consultations()->whereNotNull('bp_systolic')->count() > 0)
+            <div style="background:var(--gray-1);border-radius:12px;padding:1.25rem">
+                <p style="font-size:0.82rem;font-weight:700;color:var(--deep);margin-bottom:0.75rem">Presión Arterial (mmHg)</p>
+                <canvas id="chartBP" height="140"></canvas>
+            </div>
+            @endif
+            {{-- Temperatura --}}
+            @if($patient->consultations()->whereNotNull('temperature')->count() > 0)
+            <div style="background:var(--gray-1);border-radius:12px;padding:1.25rem">
+                <p style="font-size:0.82rem;font-weight:700;color:var(--deep);margin-bottom:0.75rem">Temperatura (°C)</p>
+                <canvas id="chartTemp" height="140"></canvas>
+            </div>
+            @endif
+            {{-- Frecuencia Cardíaca --}}
+            @if($patient->consultations()->whereNotNull('heart_rate')->count() > 0)
+            <div style="background:var(--gray-1);border-radius:12px;padding:1.25rem">
+                <p style="font-size:0.82rem;font-weight:700;color:var(--deep);margin-bottom:0.75rem">Frecuencia Cardíaca (lpm)</p>
+                <canvas id="chartHR" height="140"></canvas>
+            </div>
+            @endif
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chartDefaults = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                    y: { grid: { color: '#e2e8f0' }, ticks: { font: { size: 10 } } }
+                },
+                elements: { point: { radius: 4, hoverRadius: 6 }, line: { tension: 0.3, borderWidth: 2 } }
+            };
+
+            @foreach($patient->consultations()->whereNotNull('weight')->whereNotNull('height')->orderBy('visit_date') as $c)
+                @if($loop->first)
+                    var imcLabels = [];
+                    var imcData = [];
+                @endif
+                imcLabels.push('{{ $c->visit_date->format("d/m") }}');
+                imcData.push({{ round($c->weight / (($c->height/100) * ($c->height/100)), 1) }});
+            @endforeach
+            if (typeof imcLabels !== 'undefined' && imcLabels.length > 0) {
+                new Chart(document.getElementById('chartIMC'), {
+                    type: 'line',
+                    data: {
+                        labels: imcLabels,
+                        datasets: [{
+                            data: imcData,
+                            borderColor: '#1a9e8c',
+                            backgroundColor: 'rgba(26,158,140,0.1)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        ...chartDefaults,
+                        scales: {
+                            ...chartDefaults.scales,
+                            y: { ...chartDefaults.scales.y, suggestedMin: 15, suggestedMax: 35 }
+                        }
+                    }
+                });
+            }
+
+            @foreach($patient->consultations()->whereNotNull('bp_systolic')->orderBy('visit_date') as $c)
+                @if($loop->first)
+                    var bpLabels = [], bpSys = [], bpDia = [];
+                @endif
+                bpLabels.push('{{ $c->visit_date->format("d/m") }}');
+                bpSys.push({{ $c->bp_systolic }});
+                bpDia.push({{ $c->bp_diastolic }});
+            @endforeach
+            if (typeof bpLabels !== 'undefined' && bpLabels.length > 0) {
+                new Chart(document.getElementById('chartBP'), {
+                    type: 'line',
+                    data: {
+                        labels: bpLabels,
+                        datasets: [
+                            { label: 'Sistólica', data: bpSys, borderColor: '#e8647a', backgroundColor: 'rgba(232,100,122,0.1)', fill: false },
+                            { label: 'Diastólica', data: bpDia, borderColor: '#5b6abf', backgroundColor: 'rgba(91,106,191,0.1)', fill: false }
+                        ]
+                    },
+                    options: {
+                        ...chartDefaults,
+                        plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10 }, boxWidth: 12 } } },
+                        scales: {
+                            ...chartDefaults.scales,
+                            y: { ...chartDefaults.scales.y, suggestedMin: 50, suggestedMax: 180 }
+                        }
+                    }
+                });
+            }
+
+            @foreach($patient->consultations()->whereNotNull('temperature')->orderBy('visit_date') as $c)
+                @if($loop->first)
+                    var tempLabels = [], tempData = [];
+                @endif
+                tempLabels.push('{{ $c->visit_date->format("d/m") }}');
+                tempData.push({{ $c->temperature }});
+            @endforeach
+            if (typeof tempLabels !== 'undefined' && tempLabels.length > 0) {
+                new Chart(document.getElementById('chartTemp'), {
+                    type: 'line',
+                    data: {
+                        labels: tempLabels,
+                        datasets: [{
+                            data: tempData,
+                            borderColor: '#f5a623',
+                            backgroundColor: 'rgba(245,166,35,0.1)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        ...chartDefaults,
+                        scales: {
+                            ...chartDefaults.scales,
+                            y: { ...chartDefaults.scales.y, suggestedMin: 35, suggestedMax: 40 }
+                        }
+                    }
+                });
+            }
+
+            @foreach($patient->consultations()->whereNotNull('heart_rate')->orderBy('visit_date') as $c)
+                @if($loop->first)
+                    var hrLabels = [], hrData = [];
+                @endif
+                hrLabels.push('{{ $c->visit_date->format("d/m") }}');
+                hrData.push({{ $c->heart_rate }});
+            @endforeach
+            if (typeof hrLabels !== 'undefined' && hrLabels.length > 0) {
+                new Chart(document.getElementById('chartHR'), {
+                    type: 'line',
+                    data: {
+                        labels: hrLabels,
+                        datasets: [{
+                            data: hrData,
+                            borderColor: '#4caf7d',
+                            backgroundColor: 'rgba(76,175,125,0.1)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        ...chartDefaults,
+                        scales: {
+                            ...chartDefaults.scales,
+                            y: { ...chartDefaults.scales.y, suggestedMin: 40, suggestedMax: 120 }
+                        }
+                    }
+                });
+            }
+        });
+        </script>
+    </div>
+    @else
+    <div style="text-align:center;padding:3rem;color:var(--text-lt)">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-3)" stroke-width="1.5" style="margin:0 auto 0.75rem"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <p style="font-size:0.88rem">Sin datos de signos vitales</p>
+        <p style="font-size:0.78rem;margin-top:0.25rem">Agrega peso, estatura, presión o temperatura en una consulta</p>
+    </div>
+    @endif
 </div>
 
 <!-- ===== MODAL: AGREGAR RECETA ===== -->
@@ -275,7 +555,39 @@
             </div>
             <div class="form-group">
                 <label>Observaciones adicionales</label>
-                <textarea name="notes" rows="2" placeholder="Signos vitales, evolución..."></textarea>
+                <textarea name="notes" rows="2" placeholder="Evolución, observaciones..."></textarea>
+            </div>
+
+            <!-- SIGNOS VITALES -->
+            <div style="border-top:1px solid var(--gray-2);padding-top:1rem;margin-top:0.5rem">
+                <p style="font-size:0.82rem;font-weight:700;color:var(--teal);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em">📊 Signos Vitales</p>
+                <div class="patient-form-grid">
+                    <div class="form-group">
+                        <label>Peso (kg)</label>
+                        <input type="number" name="weight" step="0.1" min="0" max="300" placeholder="Ej: 72.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Estatura (cm)</label>
+                        <input type="number" name="height" step="0.1" min="0" max="300" placeholder="Ej: 170">
+                    </div>
+                    <div class="form-group">
+                        <label>Presión Arterial</label>
+                        <div style="display:flex;align-items:center;gap:0.35rem">
+                            <input type="number" name="bp_systolic" min="0" max="300" placeholder="120" style="flex:1">
+                            <span style="color:var(--text-lt);font-weight:600">/</span>
+                            <input type="number" name="bp_diastolic" min="0" max="200" placeholder="80" style="flex:1">
+                            <span style="font-size:0.72rem;color:var(--text-lt)">mmHg</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Temperatura (°C)</label>
+                        <input type="number" name="temperature" step="0.1" min="30" max="45" placeholder="36.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Frecuencia Cardíaca (lpm)</label>
+                        <input type="number" name="heart_rate" min="0" max="300" placeholder="72">
+                    </div>
+                </div>
             </div>
             <div class="form-group">
                 <label>Próxima cita sugerida</label>
